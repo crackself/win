@@ -166,6 +166,7 @@ local defaults = {
 	timeline_chapters_opacity = 0.8,
 	timeline_persistency = 'idle,audio',
 
+	-- 控制栏显示项目 --
 	controls = 'menu,script-stats,gap,play_pause,gap,subtitles,audio,<has_chapter>chapters,<has_many_edition>editions,<has_many_video>video,<stream>stream-quality,gap,space,speed,space,shuffle,loop-playlist,loop-file,gap,prev,items,next,gap,fullscreen',
 	controls_size = 32,
 	controls_size_fullscreen = 40,
@@ -3275,6 +3276,7 @@ function Controls:init()
 	---@type ControlItem[] Only controls that match current dispositions.
 	self.layout = {}
 
+	-- 功能快捷键 --
 	-- Serialize control elements
 	local shorthands = {
 		menu = 'command:menu:script-binding uosc/menu-blurred?菜单',
