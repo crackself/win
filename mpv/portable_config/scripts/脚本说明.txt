@@ -1,0 +1,6 @@
+autoload.lua				# 自动连播下一个文件，自动添加文件到播放列表
+pause-when-minimize.lua	# 最小化窗口暂停播放
+playlistmanager.lua			# OSD方式显示播放列表
+save_global_props.lua		# 自动保存全局设置（音量等）
+thumbfast.lua				# 进度条实时缩略图预览
+uosc.lua.lua				# 多功能OSD简洁界面
