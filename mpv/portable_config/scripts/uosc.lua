@@ -1,9 +1,4 @@
---[[
-SOURCE_ https://github.com/tomasklaen/uosc/commit/2fb5ff69a81e12f565f603cc0f29983235fce2ff
-
-极简主义设计驱动的多功能界面脚本，兼容 thumbfast 新缩略图引擎
-]]--
-
+--[[ uosc 4.3.0 - 2022-Oct-11 | https://github.com/tomasklaen/uosc ]]
 local uosc_version = '4.3.0'
 
 local assdraw = require('mp.assdraw')
@@ -151,7 +146,7 @@ end
 --[[ OPTIONS ]]
 
 local defaults = {
---	timeline_style = 'line',
+	timeline_style = 'line',
 	timeline_line_width = 2,
 	timeline_line_width_fullscreen = 3,
 	timeline_line_width_minimized_scale = 10,
@@ -160,47 +155,46 @@ local defaults = {
 	timeline_size_min_fullscreen = 0,
 	timeline_size_max_fullscreen = 60,
 	timeline_start_hidden = false,
+	timeline_persistency = 'paused',
 	timeline_opacity = 0.9,
 	timeline_border = 1,
 	timeline_step = 5,
 	timeline_chapters_opacity = 0.8,
-	timeline_persistency = 'idle,audio',
 
-	-- 控制栏显示项目 --
-	controls = 'menu,script-stats,gap,play_pause,gap,subtitles,audio,<has_chapter>chapters,<has_many_edition>editions,<has_many_video>video,<stream>stream-quality,gap,space,speed,space,shuffle,loop-playlist,loop-file,gap,prev,items,next,gap,fullscreen',
+	controls = 'menu,gap,subtitles,<has_many_audio>audio,<has_many_video>video,<has_many_edition>editions,<stream>stream-quality,gap,space,speed,space,shuffle,loop-playlist,loop-file,gap,prev,items,next,gap,fullscreen',
 	controls_size = 32,
 	controls_size_fullscreen = 40,
 	controls_margin = 8,
 	controls_spacing = 2,
-	controls_persistency = 'idle,audio',
+	controls_persistency = '',
 
 	volume = 'right',
 	volume_size = 40,
 	volume_size_fullscreen = 52,
+	volume_persistency = '',
 	volume_opacity = 0.9,
 	volume_border = 1,
 	volume_step = 1,
-	volume_persistency = 'idle,audio',
 
+	speed_persistency = '',
 	speed_opacity = 0.6,
 	speed_step = 0.1,
 	speed_step_is_factor = false,
-	speed_persistency = 'idle,audio',
 
 	menu_item_height = 36,
 	menu_item_height_fullscreen = 50,
 	menu_min_width = 260,
 	menu_min_width_fullscreen = 360,
-	menu_opacity = 0.7,
+	menu_opacity = 1,
 	menu_parent_opacity = 0.4,
 
 	top_bar = 'no-border',
 	top_bar_size = 40,
 	top_bar_size_fullscreen = 46,
+	top_bar_persistency = '',
 	top_bar_controls = true,
 	top_bar_title = true,
 	top_bar_title_opacity = 0.8,
-	top_bar_persistency = 'idle,audio',
 
 	window_border_size = 1,
 	window_border_opacity = 0.8,
@@ -210,19 +204,20 @@ local defaults = {
 
 	ui_scale = 1,
 	font_scale = 1,
-	font_bold = false,
 	text_border = 1.2,
+	pause_on_click_shorter_than = 0, -- deprecated by below
 	click_threshold = 0,
 	click_command = 'cycle pause; script-binding uosc/flash-pause-indicator',
 	flash_duration = 1000,
 	proximity_in = 40,
 	proximity_out = 120,
-	foreground = 'FFFFFF',
+	foreground = 'ffffff',
 	foreground_text = '000000',
 	background = '000000',
-	background_text = 'FFFFFF',
-	total_time = true,
+	background_text = 'ffffff',
+	total_time = false,
 	time_precision = 0,
+	font_bold = false,
 	autohide = false,
 	buffered_time_threshold = 60,
 	pause_indicator = 'flash',
@@ -232,17 +227,18 @@ local defaults = {
 	subtitle_types = 'aqt,ass,gsub,idx,jss,lrc,mks,pgs,pjs,psb,rt,slt,smi,sub,sup,srt,ssa,ssf,ttxt,txt,usf,vt,vtt',
 	font_height_to_letter_width_ratio = 0.5,
 	default_directory = '~/',
-	chapter_ranges = 'openings:30ABF964,endings:30ABF964,ads:C54E4E80',
+	chapter_ranges = 'openings:30abf964,endings:30abf964,ads:c54e4e80',
 	chapter_range_patterns = 'openings:オープニング;endings:エンディング',
-
-	idle_call_menu = 0,                       -- 空闲自动弹出上下文菜单
-	custom_font = '',                         -- 自定义界面字体
 }
 local options = table_shallow_copy(defaults)
-opt.read_options(options)
+opt.read_options(options, 'uosc')
 -- Normalize values
 options.proximity_out = math.max(options.proximity_out, options.proximity_in + 1)
 if options.chapter_ranges:sub(1, 4) == '^op|' then options.chapter_ranges = defaults.chapter_ranges end
+if options.pause_on_click_shorter_than > 0 and options.click_threshold == 0 then
+	msg.warn('`pause_on_click_shorter_than` is deprecated. Use `click_threshold` and `click_command` instead.')
+	options.click_threshold = options.pause_on_click_shorter_than
+end
 -- Ensure required environment configuration
 if options.autoload then mp.commandv('set', 'keep-open-pause', 'no') end
 -- Color shorthands
@@ -251,42 +247,35 @@ local fgt, bgt = serialize_rgba(options.foreground_text).color, serialize_rgba(o
 
 --[[ CONFIG ]]
 
--- 上下文菜单的默认内容
 local function create_default_menu()
 	return {
-		{title = '加载', items = {
-			{title = '※ 文件浏览器', value = 'script-binding uosc/open-file'},
-			{title = '※ 导入 字幕轨', value = 'script-binding uosc/load-subtitles'},
+		{title = 'Subtitles', value = 'script-binding uosc/subtitles'},
+		{title = 'Audio tracks', value = 'script-binding uosc/audio'},
+		{title = 'Stream quality', value = 'script-binding uosc/stream-quality'},
+		{title = 'Playlist', value = 'script-binding uosc/items'},
+		{title = 'Chapters', value = 'script-binding uosc/chapters'},
+		{title = 'Navigation', items = {
+			{title = 'Next', hint = 'playlist or file', value = 'script-binding uosc/next'},
+			{title = 'Prev', hint = 'playlist or file', value = 'script-binding uosc/prev'},
+			{title = 'Delete file & Next', value = 'script-binding uosc/delete-file-next'},
+			{title = 'Delete file & Prev', value = 'script-binding uosc/delete-file-prev'},
+			{title = 'Delete file & Quit', value = 'script-binding uosc/delete-file-quit'},
+			{title = 'Open file', value = 'script-binding uosc/open-file'},
 		},},
-		{title = '导航', items = {
-			{title = '※ 播放列表', value = 'script-binding uosc/playlist'},
-			{title = '※ 版本列表', value = 'script-binding uosc/editions'},
-			{title = '※ 章节列表', value = 'script-binding uosc/chapters'},
-			{title = '※ 视频轨列表', value = 'script-binding uosc/video'},
-			{title = '※ 音频轨列表', value = 'script-binding uosc/audio'},
-			{title = '※ 字幕轨列表', value = 'script-binding uosc/subtitles'},
-			{title = '播放列表乱序重排', value = 'playlist-shuffle'},
+		{title = 'Utils', items = {
+			{title = 'Aspect ratio', items = {
+				{title = 'Default', value = 'set video-aspect-override "-1"'},
+				{title = '16:9', value = 'set video-aspect-override "16:9"'},
+				{title = '4:3', value = 'set video-aspect-override "4:3"'},
+				{title = '2.35:1', value = 'set video-aspect-override "2.35:1"'},
+			},},
+			{title = 'Audio devices', value = 'script-binding uosc/audio-device'},
+			{title = 'Editions', value = 'script-binding uosc/editions'},
+			{title = 'Screenshot', value = 'async screenshot'},
+			{title = 'Show in directory', value = 'script-binding uosc/show-in-directory'},
+			{title = 'Open config folder', value = 'script-binding uosc/open-config-directory'},
 		},},
-		{title = '截屏 当前画面', value = 'screenshot window'},
-		{title = '视频', items = {
-			{title = '切换 解码模式', value = 'cycle-values hwdec no auto auto-copy'},
-			{title = '切换 去色带状态', value = 'cycle deband'},
-			{title = '切换 去隔行状态', value = 'cycle deinterlace'},
-			{title = '切换 自动校色', value = 'cycle icc-profile-auto'},
-			{title = '切换 时间码解析模式', value = 'cycle correct-pts'},
-		},},
-		{title = '工具', items = {
-			{title = '开关 常驻统计信息', value = 'script-binding stats/display-stats-toggle'},
-			{title = '显示控制台', value = 'script-binding console/enable'},
-			{title = '切换 窗口边框', value = 'cycle border'},
-			{title = '切换 窗口置顶', value = 'cycle ontop'},
-			{title = '※ 音频输出设备列表', value = 'script-binding uosc/audio-device'},
-			{title = '※ 流式传输品质', value = 'script-binding uosc/stream-quality'},
-			{title = '※ 打开 当前文件所在路径', value = 'script-binding uosc/show-in-directory'},
-			{title = '※ 打开 设置目录', value = 'script-binding uosc/open-config-directory'},
-		},},
-		{title = '停止', value = 'stop'},
-		{title = '退出mpv', value = 'quit'},
+		{title = 'Quit', value = 'quit'},
 	}
 end
 
@@ -295,7 +284,7 @@ local config = {
 	-- sets max rendering frequency in case the
 	-- native rendering frequency could not be detected
 	render_delay = 1 / 60,
-	font = options.custom_font or mp.get_property('options/osd-font'),
+	font = mp.get_property('options/osd-font'),
 	media_types = split(options.media_types, ' *, *'),
 	subtitle_types = split(options.subtitle_types, ' *, *'),
 	stream_quality_options = split(options.stream_quality_options, ' *, *'),
@@ -362,6 +351,7 @@ local config = {
 		if #main_menu.items > 0 then
 			return main_menu.items
 		else
+			-- Default context menu
 			return create_default_menu()
 		end
 	end)(),
@@ -664,6 +654,24 @@ function wrap_text(text, target_line_length)
 	return table.concat(lines, '\n'), max_length, #lines
 end
 
+---Extracts the properties used by property expansion of that string.
+---@param str string
+---@param res { [string] : boolean } | nil
+---@return { [string] : boolean }
+local function get_expansion_props(str, res)
+	res = res or {}
+	for str in str:gmatch('%$(%b{})') do
+		local name, str = str:match('^{[?!]?=?([^:]+):?(.*)}$')
+		if name then
+			local s = name:find('==') or nil
+			if s then name = name:sub(0, s - 1) end
+			res[name] = true
+			if str and str ~= '' then get_expansion_props(str, res) end
+		end
+	end
+	return res
+end
+
 -- Escape a string for verbatim display on the OSD
 ---@param str string
 function ass_escape(str)
@@ -730,7 +738,7 @@ end
 -- Check if path is a protocol, such as `http://...`
 ---@param path string
 function is_protocol(path)
-	return type(path) == 'string' and path:match('^%a[%a%d-_]+://') ~= nil
+	return type(path) == 'string' and (path:match('^%a[%a%d-_]+://') ~= nil or path:match('^%a[%a%d-_]+:\\?') ~= nil)
 end
 
 ---@param path string
@@ -1240,10 +1248,18 @@ end
 -- Toggles passed elements' min visibilities between 0 and 1.
 ---@param ids string[] IDs of elements to peek.
 function Elements:toggle(ids)
-	local elements = itable_filter(self.itable, function(element) return itable_index_of(ids, element.id) ~= nil end)
-	local all_visible = itable_find(elements, function(element) return element.min_visibility ~= 1 end) == nil
-	local to = all_visible and 0 or 1
-	for _, element in ipairs(elements) do element:tween_property('min_visibility', element.min_visibility, to) end
+	local has_invisible = itable_find(ids, function(id) return Elements[id] and Elements[id].min_visibility ~= 1 end)
+	self:set_min_visibility(has_invisible and 1 or 0, ids)
+end
+
+-- Set (animate) elements' min visibilities to passed value.
+---@param visibility number 0-1 floating point.
+---@param ids string[] IDs of elements to peek.
+function Elements:set_min_visibility(visibility, ids)
+	for _, id in ipairs(ids) do
+		local element = Elements[id]
+		if element then element:tween_property('min_visibility', element.min_visibility, visibility) end
+	end
 end
 
 -- Flash passed elements.
@@ -1282,7 +1298,10 @@ mp.set_key_bindings({
 	{
 		'mbtn_left',
 		Elements:create_proximity_dispatcher('mbtn_left_up'),
-		Elements:create_proximity_dispatcher('mbtn_left_down'),
+		function(...)
+			update_mouse_pos(nil, mp.get_property_native('mouse-pos'), true)
+			Elements:proximity_trigger('mbtn_left_down', ...)
+		end,
 	},
 	{'mbtn_left_dbl', 'ignore'},
 }, 'mbtn_left', 'force')
@@ -1782,10 +1801,11 @@ function Menu:update_content_dimensions()
 		-- Estimate width of a widest item
 		local max_width = 0
 		for _, item in ipairs(menu.items) do
-			local spacings_in_item = 2 + (item.hint and 1 or 0) + (item.icon and 1 or 0)
 			local icon_width = item.icon and self.font_size or 0
 			item.title_width = text_length_width_estimate(item.title_length, self.font_size)
 			item.hint_width = text_length_width_estimate(item.hint_length, self.font_size_hint)
+			local spacings_in_item = 1 + (item.title_width > 0 and 1 or 0)
+				+ (item.hint_width > 0 and 1 or 0) + (icon_width > 0 and 1 or 0)
 			local estimated_width = item.title_width + item.hint_width + icon_width
 				+ (self.item_padding * spacings_in_item)
 			if estimated_width > max_width then max_width = estimated_width end
@@ -2150,8 +2170,6 @@ function Menu:render()
 			local item_by = item_ay + self.item_height
 			local item_center_y = item_ay + (self.item_height / 2)
 			local item_clip = (item_ay < ay or item_by > by) and scroll_clip or nil
-			-- controls title & hint clipping proportional to the ratio of their widths
-			local title_hint_ratio = item.hint and item.title_width / (item.title_width + item.hint_width) or 1
 			local content_ax, content_bx = ax + spacing, bx - spacing
 			local font_color = item.active and fgt or bgt
 			local shadow_color = item.active and fg or bg
@@ -2185,12 +2203,18 @@ function Menu:render()
 				content_bx = content_bx - icon_size - spacing
 			end
 
-			local title_hint_cut_x = content_ax + (content_bx - content_ax - spacing) * title_hint_ratio
+			local title_cut_x = content_bx
+			if item.hint_width > 0 then
+				-- controls title & hint clipping proportional to the ratio of their widths
+				local title_content_ratio = item.title_width / (item.title_width + item.hint_width)
+				title_cut_x = round(content_ax + (content_bx - content_ax - spacing) * title_content_ratio
+					+ (item.title_width > 0 and spacing / 2 or 0))
+			end
 
 			-- Hint
 			if item.hint then
 				item.ass_safe_hint = item.ass_safe_hint or ass_escape(item.hint)
-				local clip = '\\clip(' .. round(title_hint_cut_x + spacing / 2) .. ',' ..
+				local clip = '\\clip(' .. title_cut_x .. ',' ..
 					math.max(item_ay, ay) .. ',' .. bx .. ',' .. math.min(item_by, by) .. ')'
 				ass:txt(content_bx, item_center_y, 6, item.ass_safe_hint, {
 					size = self.font_size_hint, color = font_color, wrap = 2, opacity = 0.5 * opacity, clip = clip,
@@ -2202,7 +2226,7 @@ function Menu:render()
 			if item.title then
 				item.ass_safe_title = item.ass_safe_title or ass_escape(item.title)
 				local clip = '\\clip(' .. ax .. ',' .. math.max(item_ay, ay) .. ','
-					.. round(title_hint_cut_x - spacing / 2) .. ',' .. math.min(item_by, by) .. ')'
+					.. title_cut_x .. ',' .. math.min(item_by, by) .. ')'
 				ass:txt(content_ax, item_center_y, 4, item.ass_safe_title, {
 					size = self.font_size, color = font_color, italic = item.italic, bold = item.bold, wrap = 2,
 					opacity = text_opacity * (item.muted and 0.5 or 1), clip = clip,
@@ -2226,7 +2250,7 @@ function Menu:render()
 			})
 
 			-- Title
-			ass:txt(ax + menu.width / 2, title_ay + (title_height / 2), 5, menu.title, {
+			ass:txt(ax + menu.width / 2, title_ay + (title_height / 2), 5, menu.ass_safe_title, {
 				size = self.font_size, bold = true, color = bg, wrap = 2, opacity = opacity,
 				clip = '\\clip(' .. ax .. ',' .. title_ay .. ',' .. bx .. ',' .. ay .. ')',
 			})
@@ -2646,6 +2670,7 @@ function PauseIndicator:init()
 	self.opacity = 0
 
 	mp.observe_property('pause', 'bool', function(_, paused)
+		if Elements.timeline.pressed then return end
 		if options.pause_indicator == 'flash' then
 			if self.paused == paused then return end
 			self:flash()
@@ -2833,6 +2858,8 @@ function Timeline:clear_thumbnail() mp.commandv('script-message-to', 'thumbfast'
 
 function Timeline:on_mbtn_left_down()
 	self.pressed = true
+	self.pressed_pause = state.pause
+	mp.set_property_native('pause', true)
 	self:set_from_cursor()
 end
 function Timeline:on_prop_duration() self:decide_enabled() end
@@ -2842,7 +2869,10 @@ function Timeline:on_prop_fullormaxed() self:update_dimensions() end
 function Timeline:on_display() self:update_dimensions() end
 function Timeline:on_mouse_leave() self:clear_thumbnail() end
 function Timeline:on_global_mbtn_left_up()
-	self.pressed = false
+	if self.pressed then
+		mp.set_property_native('pause', self.pressed_pause)
+		self.pressed = false
+	end
 	self:clear_thumbnail()
 end
 function Timeline:on_global_mouse_leave()
@@ -3011,8 +3041,8 @@ function Timeline:render()
 			local font_size = self.font_size * 0.8
 			local human = round(math.max(buffered_time, 0)) .. 's'
 			local width = text_width_estimate(human, font_size)
-			local min_x = bax + 5 + text_width_estimate(state.time_human, self.font_size)
-			local max_x = bbx - 5 - text_width_estimate(state.duration_or_remaining_time_human, self.font_size)
+			local min_x = bax + spacing + 5 + text_width_estimate(state.time_human, self.font_size)
+			local max_x = bbx - spacing - 5 - text_width_estimate(state.duration_or_remaining_time_human, self.font_size)
 			if x < min_x then x = min_x elseif x + width > max_x then x, align = max_x, 6 end
 			draw_timeline_text(x, fcy, align, human, {size = font_size, opacity = text_opacity * 0.6, border = 1})
 		end
@@ -3223,8 +3253,8 @@ function TopBar:render()
 		end
 
 		-- Title
-		if max_bx - title_ax > self.font_size * 3 then
-			local text = state.title or 'n/a'
+		local text = state.title
+		if max_bx - title_ax > self.font_size * 3 and text and text ~= '' then
 			local bx = math.min(max_bx, title_ax + text_width_estimate(text, self.font_size) + padding * 2)
 			local by = self.by - bg_margin
 			ass:rect(title_ax, title_ay, bx, by, {
@@ -3276,21 +3306,20 @@ function Controls:init()
 	---@type ControlItem[] Only controls that match current dispositions.
 	self.layout = {}
 
-	-- 功能快捷键 --
 	-- Serialize control elements
 	local shorthands = {
 		menu = 'command:menu:script-binding uosc/menu-blurred?菜单',
 		['script-stats'] = 'command:info_outline:script-binding stats/display-stats-toggle?统计数据',
 		['play_pause'] = 'cycle:not_started:pause:no=play_circle/yes=pause_circle?播放/暂停',
-		subtitles = 'command:subtitles:script-binding uosc/subtitles#sub>0?字幕轨',
-		audio = 'command:graphic_eq:script-binding uosc/audio#audio>1?音频轨',
+		subtitles = 'command:subtitles:script-binding uosc/subtitles#sub>0?字幕',
+		audio = 'command:graphic_eq:script-binding uosc/audio#audio>1?音轨',
 		['audio-device'] = 'command:speaker:script-binding uosc/audio-device?音频设备',
 		video = 'command:theaters:script-binding uosc/video#video>1?视频轨',
 		playlist = 'command:list_alt:script-binding uosc/playlist?播放列表',
 		chapters = 'command:bookmark:script-binding uosc/chapters#chapters>0?章节',
 		['editions'] = 'command:bookmarks:script-binding uosc/editions#editions>1?版本',
 		['stream-quality'] = 'command:high_quality:script-binding uosc/stream-quality?流品质',
-		['open-file'] = 'command:file_open:script-binding uosc/open-file?加载文件',
+		['open-file'] = 'command:file_open:script-binding uosc/open-file?打开文件',
 		['items'] = 'command:list_alt:script-binding uosc/items?播放列表/文件浏览器',
 		prev = 'command:arrow_back_ios:script-binding uosc/prev?上一个',
 		next = 'command:arrow_forward_ios:script-binding uosc/next?下一个',
@@ -3298,8 +3327,8 @@ function Controls:init()
 		last = 'command:last_page:script-binding uosc/last?末位',
 		['loop-playlist'] = 'cycle:repeat:loop-playlist:no/inf!?列表循环',
 		['loop-file'] = 'cycle:repeat_one:loop-file:no/inf!?单曲循环',
-		shuffle = 'toggle:shuffle:shuffle?乱序播放',
-		fullscreen = 'cycle:crop_free:fullscreen:no/yes=fullscreen_exit!?切换全屏',
+		shuffle = 'toggle:shuffle:shuffle?随机播放',
+		fullscreen = 'cycle:crop_free:fullscreen:no/yes=fullscreen_exit!?全屏',
 	}
 
 	-- Parse out disposition/config pairs
@@ -3940,7 +3969,7 @@ function create_select_tracklist_type_menu_opener(menu_title, track_type, track_
 
 		if load_command then
 			items[#items + 1] = {
-				title = '导入', bold = true, italic = true, hint = '打开文件', value = '{load}', separator = true,
+				title = 'Load', bold = true, italic = true, hint = 'open file', value = '{load}', separator = true,
 			}
 		end
 
@@ -3953,8 +3982,8 @@ function create_select_tracklist_type_menu_opener(menu_title, track_type, track_
 		-- let people mistakenly select what is unwanted 99.999% of the time.
 		-- If I'm mistaken and there is an active need for this, feel free to
 		-- open an issue.
-		if track_type == 'sub' or track_type == 'audio' or track_type == 'video' then
-			disabled_item = {title = '禁用', italic = true, muted = true, hint = '—', value = nil, active = true}
+		if track_type == 'sub' then
+			disabled_item = {title = 'Disabled', italic = true, muted = true, hint = '—', value = nil, active = true}
 			items[#items + 1] = disabled_item
 		end
 
@@ -3971,12 +4000,12 @@ function create_select_tracklist_type_menu_opener(menu_title, track_type, track_
 				h(track.codec)
 				if track['audio-channels'] then h(track['audio-channels'] .. ' channels') end
 				if track['demux-samplerate'] then h(string.format('%.3gkHz', track['demux-samplerate'] / 1000)) end
-				if track.forced then h('强制') end
-				if track.default then h('默认') end
-				if track.external then h('外挂') end
+				if track.forced then h('forced') end
+				if track.default then h('default') end
+				if track.external then h('external') end
 
 				items[#items + 1] = {
-					title = (track.title and track.title or '轨道 ' .. track.id),
+					title = (track.title and track.title or 'Track ' .. track.id),
 					hint = table.concat(hint_values, ', '),
 					value = track.id,
 					active = track.selected,
@@ -3999,9 +4028,9 @@ function create_select_tracklist_type_menu_opener(menu_title, track_type, track_
 			mp.commandv('set', track_prop, value and value or 'no')
 
 			-- If subtitle track was selected, assume user also wants to see it
---			if value and track_type == 'sub' then
---				mp.commandv('set', 'sub-visibility', 'yes')
---			end
+			if value and track_type == 'sub' then
+				mp.commandv('set', 'sub-visibility', 'yes')
+			end
 		end
 	end
 
@@ -4048,14 +4077,14 @@ function open_file_navigation_menu(directory_path, handle_select, opts)
 	if is_root then
 		if state.os == 'windows' then
 			items[#items + 1] = {
-				title = '..', hint = '驱动器列表', value = {is_drives = true, is_to_parent = true}, separator = true,
+				title = '..', hint = 'Drives', value = {is_drives = true, is_to_parent = true}, separator = true,
 			}
 		end
 	else
 		local serialized = serialize_path(directory.dirname)
 		serialized.is_directory = true
 		serialized.is_to_parent = true
-		items[#items + 1] = {title = '..', hint = '上级目录', value = serialized, separator = true}
+		items[#items + 1] = {title = '..', hint = 'parent dir', value = serialized, separator = true}
 	end
 
 	local items_start_index = #items + 1
@@ -4138,7 +4167,7 @@ function open_drives_menu(handle_select, opts)
 			if drive then
 				local drive_path = normalize_path(drive)
 				items[#items + 1] = {
-					title = drive, hint = '盘符', value = drive_path,
+					title = drive, hint = 'Drive', value = drive_path,
 					selected = opts.selected_path == drive_path,
 					active = opts.active_path == drive_path,
 				}
@@ -4148,7 +4177,7 @@ function open_drives_menu(handle_select, opts)
 		msg.error(process.stderr)
 	end
 
-	return Menu:open({type = opts.type, title = opts.title or '驱动器列表', items = items}, handle_select)
+	return Menu:open({type = opts.type, title = opts.title or 'Drives', items = items}, handle_select)
 end
 
 -- EVENT HANDLERS
@@ -4270,59 +4299,57 @@ end
 if options.click_threshold > 0 then
 	-- Executes custom command for clicks shorter than `options.click_threshold`
 	-- while filtering out double clicks.
-	local duration_seconds = options.click_threshold / 1000
-	local last_click = 0
-	mp.add_key_binding('mbtn_left', 'uosc_mouse', function(tab)
-		if tab.event == 'up' then
-			local delta = mp.get_time() - last_click
-			-- in windowed mode the up event comes shortly after the down event, ignore
-			if delta > 0.01 and delta < duration_seconds then
-				last_click = 0
-				mp.command(options.click_command)
-			end
-		else
-			last_click = mp.get_time()
-		end
-	end, {complex = true})
-	mp.observe_property('mouse-pos', 'native', function(_, mouse)
-		if mouse.hover and mp.get_time() - last_click < duration_seconds then
-			last_click = 0
-			mp.command(options.click_command)
-		end
+	local click_time = options.click_threshold / 1000
+	local doubleclick_time = mp.get_property_native('input-doubleclick-time') / 1000
+	local last_down, last_up = 0, 0
+	local click_timer = mp.add_timeout(math.max(click_time, doubleclick_time), function()
+		local delta = last_up - last_down
+		if delta > 0 and delta < click_time and delta > 0.02 then mp.command(options.click_command) end
 	end)
+	click_timer:kill()
+	mp.set_key_bindings({{'mbtn_left',
+		function() last_up = mp.get_time() end,
+		function()
+			last_down = mp.get_time()
+			if click_timer:is_enabled() then click_timer:kill() else click_timer:resume() end
+		end,
+	},}, 'mouse_movement', 'force')
+	mp.enable_key_bindings('mouse_movement', 'allow-vo-dragging+allow-hide-cursor')
 end
 
-mp.observe_property('mouse-pos', 'native', function(_, mouse)
-	if mouse.hover then
+function update_mouse_pos(_, mouse, ignore_hover)
+	if ignore_hover or mouse.hover then
 		if cursor.hidden then handle_mouse_enter(mouse.x, mouse.y) end
 		handle_mouse_move(mouse.x, mouse.y)
 	else handle_mouse_leave() end
-end)
-mp.observe_property('osc', 'bool', function(_, value) if value == true then mp.set_property('osc', 'no') end end)
-function update_title(title_template)
-	if title_template:sub(-6) == ' - mpv' then title_template = title_template:sub(1, -7) end
-	set_state('title', ass_escape(mp.command_native({'expand-text', title_template})))
 end
+mp.observe_property('mouse-pos', 'native', update_mouse_pos)
+mp.observe_property('osc', 'bool', function(name, value) if value == true then mp.set_property('osc', 'no') end end)
 mp.register_event('file-loaded', function()
 	set_state('path', normalize_path(mp.get_property_native('path')))
-	update_title(mp.get_property_native('title'))
 end)
 mp.register_event('end-file', function(event)
-	set_state('title', nil)
 	if event.reason == 'eof' then
 		file_end_timer:kill()
 		handle_file_end()
 	end
 end)
 do
-	local hot_keywords = {'time', 'percent'}
-	local timer = mp.add_periodic_timer(0.9, function() update_title(mp.get_property_native('title')) end)
-	timer:kill()
+	local template = nil
+	function update_title()
+		if template:sub(-6) == ' - mpv' then template = template:sub(1, -7) end
+		-- escape ASS, and strip newlines and trailing slashes and trim whitespace
+		local t = mp.command_native({'expand-text', template}):gsub('\\n', ' '):gsub('[\\%s]+$', ''):gsub('^%s+', '')
+		set_state('title', ass_escape(t))
+	end
 	mp.observe_property('title', 'string', function(_, title)
-		update_title(title)
-		-- Enable periodic updates for templates with hot variables
-		local is_hot = itable_find(hot_keywords, function(var) return string.find(title or '', var) ~= nil end)
-		if is_hot then timer:resume() else timer:kill() end
+		mp.unobserve_property(update_title)
+		template = title
+		local props = get_expansion_props(title)
+		for prop, _ in pairs(props) do
+			mp.observe_property(prop, 'native', update_title)
+		end
+		if not next(props) then update_title() end
 	end)
 end
 mp.observe_property('playback-time', 'number', create_state_setter('time', function()
@@ -4480,9 +4507,9 @@ mp.add_key_binding(nil, 'decide-pause-indicator', function() Elements.pause_indi
 mp.add_key_binding(nil, 'menu', function() toggle_menu_with_items() end)
 mp.add_key_binding(nil, 'menu-blurred', function() toggle_menu_with_items({mouse_nav = true}) end)
 local track_loaders = {
-	{name = 'subtitles', hint = '字幕轨', prop = 'sub', allowed_types = config.subtitle_types},
-	{name = 'audio', hint = '音频轨', prop = 'audio', allowed_types = config.media_types},
-	{name = 'video', hint = '视频轨', prop = 'video', allowed_types = config.media_types},
+	{name = 'subtitles', prop = 'sub', allowed_types = config.subtitle_types},
+	{name = 'audio', prop = 'audio', allowed_types = config.media_types},
+	{name = 'video', prop = 'video', allowed_types = config.media_types},
 }
 for _, loader in ipairs(track_loaders) do
 	local menu_type = 'load-' .. loader.name
@@ -4504,21 +4531,21 @@ for _, loader in ipairs(track_loaders) do
 		open_file_navigation_menu(
 			path,
 			function(path) mp.commandv(loader.prop .. '-add', path) end,
-			{type = menu_type, title = '导入 ' .. loader.hint, allowed_types = loader.allowed_types}
+			{type = menu_type, title = 'Load ' .. loader.name, allowed_types = loader.allowed_types}
 		)
 	end)
 end
 mp.add_key_binding(nil, 'subtitles', create_select_tracklist_type_menu_opener(
-	'字幕轨列表', 'sub', 'sid', 'script-binding uosc/load-subtitles'
+	'Subtitles', 'sub', 'sid', 'script-binding uosc/load-subtitles'
 ))
 mp.add_key_binding(nil, 'audio', create_select_tracklist_type_menu_opener(
-	'音频轨列表', 'audio', 'aid', 'script-binding uosc/load-audio'
+	'Audio', 'audio', 'aid', 'script-binding uosc/load-audio'
 ))
 mp.add_key_binding(nil, 'video', create_select_tracklist_type_menu_opener(
-	'视频轨列表', 'video', 'vid', 'script-binding uosc/load-video'
+	'Video', 'video', 'vid', 'script-binding uosc/load-video'
 ))
 mp.add_key_binding(nil, 'playlist', create_self_updating_menu_opener({
-	title = '播放列表',
+	title = 'Playlist',
 	type = 'playlist',
 	list_prop = 'playlist',
 	serializer = function(playlist)
@@ -4538,7 +4565,7 @@ mp.add_key_binding(nil, 'playlist', create_self_updating_menu_opener({
 	on_select = function(index) mp.commandv('set', 'playlist-pos-1', tostring(index)) end,
 }))
 mp.add_key_binding(nil, 'chapters', create_self_updating_menu_opener({
-	title = '章节列表',
+	title = 'Chapters',
 	type = 'chapters',
 	list_prop = 'chapter-list',
 	active_prop = 'chapter',
@@ -4558,7 +4585,7 @@ mp.add_key_binding(nil, 'chapters', create_self_updating_menu_opener({
 	on_select = function(index) mp.commandv('set', 'chapter', tostring(index - 1)) end,
 }))
 mp.add_key_binding(nil, 'editions', create_self_updating_menu_opener({
-	title = '版本列表',
+	title = 'Editions',
 	type = 'editions',
 	list_prop = 'edition-list',
 	active_prop = 'current-edition',
@@ -4566,7 +4593,7 @@ mp.add_key_binding(nil, 'editions', create_self_updating_menu_opener({
 		local items = {}
 		for _, edition in ipairs(editions or {}) do
 			items[#items + 1] = {
-				title = edition.title or '版本',
+				title = edition.title or 'Edition',
 				hint = tostring(edition.id + 1),
 				value = edition.id,
 				active = edition.id == current_id,
@@ -4604,7 +4631,7 @@ mp.add_key_binding(nil, 'stream-quality', function()
 		items[#items + 1] = {title = height .. 'p', value = format, active = format == ytdl_format}
 	end
 
-	Menu:open({type = 'stream-quality', title = '流式传输品质', items = items}, function(format)
+	Menu:open({type = 'stream-quality', title = 'Stream quality', items = items}, function(format)
 		mp.set_property('ytdl-format', format)
 
 		-- Reload the video to apply new format
@@ -4734,7 +4761,7 @@ mp.add_key_binding(nil, 'delete-file-quit', function()
 	mp.command('quit')
 end)
 mp.add_key_binding(nil, 'audio-device', create_self_updating_menu_opener({
-	title = '音频输出设备列表',
+	title = 'Audio devices',
 	type = 'audio-device-list',
 	list_prop = 'audio-device-list',
 	active_prop = 'audio-device',
@@ -4779,15 +4806,6 @@ mp.add_key_binding(nil, 'open-config-directory', function()
 	end
 end)
 
--- 空闲自动弹出上下文菜单
-if type(options.idle_call_menu) == 'number' then
-	if options.idle_call_menu <= 2 and options.idle_call_menu > config.render_delay then
-		mp.observe_property('idle-active', 'bool', function(_, value)
-			if value == true then mp.add_timeout(options.idle_call_menu, function() if Menu:is_open() then return else mp.command('script-binding uosc/menu-blurred') end end) end
-		end)
-	end
-end
-
 -- MESSAGE HANDLERS
 
 mp.register_script_message('show-submenu', function(id) toggle_menu_with_items({submenu = id}) end)
@@ -4828,4 +4846,9 @@ mp.register_script_message('set', function(name, value)
 	Elements:trigger('external_prop_' .. name, value)
 end)
 mp.register_script_message('toggle-elements', function(elements) Elements:toggle(split(elements, ' *, *')) end)
+mp.register_script_message('set-min-visibility', function(visibility, elements)
+	local fraction = tonumber(visibility)
+	local ids = split(elements and elements ~= '' and elements or 'timeline,controls,volume,top_bar', ' *, *')
+	if fraction then Elements:set_min_visibility(clamp(0, fraction, 1), ids) end
+end)
 mp.register_script_message('flash-elements', function(elements) Elements:flash(split(elements, ' *, *')) end)
