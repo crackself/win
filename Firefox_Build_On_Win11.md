@@ -314,7 +314,7 @@ ac_add_options --with-l10n-base=d:/work/l10n-central
 #WIN_UCRT_REDIST_DIR=${UCRT_REDISTDIR%?}\\Redist\\ucrt\\DLLs\\x64
 ```
 
-#### `MOZBUILD_STATE_PATH` 内编译相关工具栏
+#### `MOZBUILD_STATE_PATH` 内编译相关工具链
 ```
 cbindgen
 clang
