@@ -203,3 +203,135 @@ libportable 的头文件 portable.h  > D:\work\.mozbuild\clang\include
 将 编译libportable 生成的 portable64.lib > D:\work\.mozbuild\clang\lib
 将 编译libportable 生成的 portable64.dll、portable.ini > D:\work\.mozbuild\obju64-release\dist_source\bin
 ```
+
+#### 修改`zh-CN`语言包源码
+##### 语言包源码
+`https://hg.mozilla.org/l10n-central/zh-CN`
+默认语言包源码目录为`MOZBUILD_STATE_PATH`
+或在.mozconfig中指定(如 d:/work/l10n-central\zh-CN)
+`ac_add_options --with-l10n-base=d:/work/l10n-central`
+##### 修改`l10n-central\zh-CN\browser\chrome\browser\browser.properties`
+```
+browser.startup.homepage = about:newtab	  # 设置Firefox启动主页为新标签页
+```
+
+#### `.mozconfig`配置文件
+```
+# This file specifies the build flags for Iceweasel.  You can use it by adding:
+# to the top of your mozconfig file.
+# PGO build (mach build -v 2>&1 | tee -i ../build_x86.log)
+. $topsrcdir/browser/config/mozconfig
+ac_add_options --with-app-name=Firefox
+
+mk_add_options MOZ_OBJDIR=../obju64-release
+mk_add_options MOZ_MAKE_FLAGS=-j5
+
+# for 64-bit build
+ac_add_options --host=x86_64-pc-mingw32
+ac_add_options --target=x86_64-pc-mingw32
+
+# not need mozbuild install by default dir
+#export MOZBUILD_STATE_PATH=/d/work/mozbuild
+#export MOZILLABUILD=/d/work/mozbuild
+
+# need when mozillaBuild
+#export WIN32_REDIST_DIR="/c/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Redist/MSVC/14.34.31931/x64/Microsoft.VC143.CRT"
+#export WINDOWSSDKDIR="/c/Program Files (x86)/Windows Kits/10"
+#export WIN_UCRT_REDIST_DIR="$WINDOWSSDKDIR/redist/10.0.22000.0/ucrt/dlls/x64"
+
+#export LIB="$LIB;D:\\src\\llvm8\\lib\\clang\\8.0.0\\lib\\windows"
+#export LIB="$LIB;/C/Users/Administrator/.mozbuild/clang/lib;/C/Users/Administrator/.mozbuild/clang/lib/clang/15.0.5/lib/windows"
+#
+
+# optimize
+ac_add_options MOZ_PGO=1
+export CC=clang-cl
+export CXX=clang-cl
+export LINKER=lld-link
+export RUSTC_OPT_LEVEL=2
+#export ENABLE_CLANG_PLUGIN=1
+#export MOZ_LTO=cross
+
+ac_add_options --enable-optimize="-O2 -DTT_MEMUTIL -clang:-ftree-vectorize -clang:-march=skylake -clang:-mtune=skylake"
+export RUSTFLAGS="$RUSTFLAGS -Ctarget-cpu=skylake"
+#ac_add_options --enable-optimize="-O2 -DTT_MEMUTIL"
+ac_add_options --enable-rust-simd
+ac_add_options --enable-jemalloc
+ac_add_options --enable-install-strip
+ac_add_options --enable-strip
+# enable clang plugins
+# ac_add_options --enable-mozsearch-plugin
+ac_add_options --enable-clang-plugin
+
+# 1.st
+#ac_add_options --enable-profile-generate=cross
+# 2.st
+#ac_add_options --enable-profile-use=cross
+#ac_add_options --enable-lto=cross
+
+# disable things
+ac_add_options --disable-tests
+ac_add_options --disable-debug
+ac_add_options --disable-updater
+ac_add_options --disable-crashreporter
+ac_add_options --disable-parental-controls
+ac_add_options --disable-necko-wifi
+#ac_add_options --disable-webrtc
+# Encrypted Media Extensions 
+#ac_add_options --disable-eme
+ac_add_options --disable-sandbox
+ac_add_options --disable-debug
+ac_add_options --disable-debug-symbols
+ac_add_options --disable-maintenance-service
+ac_add_options --disable-accessibility
+ac_add_options --disable-webspeech
+ac_add_options --disable-webspeechtestbackend
+ac_add_options --disable-negotiateauth
+ac_add_options --disable-system-policies
+ac_add_options --disable-geckodriver
+ac_add_options --disable-dmd
+ac_add_options --disable-profiling
+MOZ_TELEMETRY_REPORTING=
+
+# Enable
+ac_add_options --allow-addon-sideload
+# LEGACY_EXTENSIONS
+ac_add_options "MOZ_ALLOW_LEGACY_EXTENSIONS=1"
+# Add-on signing is not required
+MOZ_REQUIRE_SIGNING=
+
+# Branding
+export MOZILLA_OFFICIAL=1
+ac_add_options --enable-update-channel=release
+ac_add_options --without-wasm-sandboxed-libraries
+ac_add_options --with-branding=browser/branding/official
+
+ac_add_options --with-l10n-base=d:/work/l10n-central
+#ac_add_options --enable-ui-locale=zh-CN
+
+# crt dir need by fx_build.sh
+#WIN32_REDIST_DIR=${VC_REDISTDIR%?}\\x64\\Microsoft.VC143.CRT
+#WIN_UCRT_REDIST_DIR=${UCRT_REDISTDIR%?}\\Redist\\ucrt\\DLLs\\x64
+```
+
+#### `MOZBUILD_STATE_PATH` 内编译相关工具栏
+```
+cbindgen
+clang
+mozmake
+node
+nasm
+nsis
+
+# 以下非编译必须，./mach bootstrap相关
+git-cinnabar	# git获取源码修改
+clang-tools
+sccache
+sysroot-wasm32-wasi
+fix-stacks
+glean
+dump_syms
+minidump-stackwalk
+srcdirs
+winchecksec
+```
