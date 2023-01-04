@@ -9,7 +9,7 @@ Win11 or Win10 with lastest update
 Desktop development with C++
 
 MSVC v143 - VS 2022 C++ x64/x86 build tools
-Windows 10 SDK (at least 10.0.19041.0)		# 对于操作系统的最新SDK
+Windows 10 SDK (at least 10.0.19041.0)		# 对应操作系统的最新SDK
 C++ ATL for v143 build tools (x86 and x64)
 ```
 #### 安装[MozillaBuild](https://ftp.mozilla.org/pub/mozilla/libraries/win32/MozillaBuildSetup-Latest.exe)到D:\work
