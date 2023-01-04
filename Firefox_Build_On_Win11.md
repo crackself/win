@@ -1,4 +1,18 @@
-#### 安装MozillaBuild到D:\work
+#### 系统要求
+```
+Memory: 4GB RAM minimum, 8GB+ recommended.
+Disk Space: At least 40GB of free disk space.
+Win11 or Win10 with lastest update
+```
+#### 安装Visual [Studio Build Tools](https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022)组件
+```
+Desktop development with C++
+
+MSVC v143 - VS 2022 C++ x64/x86 build tools
+Windows 10 SDK (at least 10.0.19041.0)		# 对于操作系统的最新SDK
+C++ ATL for v143 build tools (x86 and x64)
+```
+#### 安装[MozillaBuild](https://ftp.mozilla.org/pub/mozilla/libraries/win32/MozillaBuildSetup-Latest.exe)到D:\work
 修改`start-shell.bat`，添加环境变量`PATH LIB INCLUDE`
 ```
 REM Reset some env vars.
@@ -56,7 +70,7 @@ cd D:/work/obju64-release	或 cd /d/work/obju64-release
 
 `mozmake maybe_clobber_profiledbuild`
 
-  或未修改源码中Make.in情况下，执行
+  ##### 或未修改`mozilla-unified\Make.in`情况下，执行
   
 	 `$(LLVM_PROFDATA) show --value-cutoff=1024 --all-functions $(DEPTH)/instrumented/merged.profdata --output $(DEPTH)/orderfile.txt`
 
@@ -335,3 +349,8 @@ minidump-stackwalk
 srcdirs
 winchecksec
 ```
+
+##### 官方文档
+- [win编译](https://firefox-source-docs.mozilla.org/setup/windows_build.html)
+- [语言包源码](https://firefox-source-docs.mozilla.org/build/buildsystem/locales.html)
+- [源码分支](https://firefox-source-docs.mozilla.org/contributing/vcs/mercurial.html#mozilla-release)
