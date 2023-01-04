@@ -350,7 +350,9 @@ srcdirs
 winchecksec
 ```
 
-##### 官方文档
+##### 文档及第三方资源
 - [win编译](https://firefox-source-docs.mozilla.org/setup/windows_build.html)
 - [语言包源码](https://firefox-source-docs.mozilla.org/build/buildsystem/locales.html)
 - [源码分支](https://firefox-source-docs.mozilla.org/contributing/vcs/mercurial.html#mozilla-release)
+- [libportable](https://github.com/adonais/libportable)
+- [Iceweasel](https://github.com/adonais/iceweasel)
