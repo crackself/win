@@ -71,7 +71,7 @@ cd D:/work/obju64-release	或 cd /d/work/obju64-release
 
   ##### 或未修改`mozilla-unified\Make.in`情况下，执行
   
-	 `$(LLVM_PROFDATA) show --value-cutoff=1024 --all-functions $(DEPTH)/instrumented/merged.profdata --output $(DEPTH)/orderfile.txt`
+	 `/d/work/.mozbuild/clang/bin/llvm-profdata.exe show --value-cutoff=1024 --all-functions instrumented/merged.profdata --output orderfile.txt`
 
 #### 生成二次编译配置并编译
 ```../mozilla-release/configure --enable-profile-use=cross --enable-lto=cross
@@ -351,7 +351,7 @@ winchecksec
 ```
 
 ##### 文档及第三方资源
-- [win编译](https://firefox-source-docs.mozilla.org/setup/windows_build.html)
+- [Win编译](https://firefox-source-docs.mozilla.org/setup/windows_build.html)
 - [语言包源码](https://firefox-source-docs.mozilla.org/build/buildsystem/locales.html)
 - [源码分支](https://firefox-source-docs.mozilla.org/contributing/vcs/mercurial.html#mozilla-release)
 - [libportable](https://github.com/adonais/libportable)
