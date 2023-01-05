@@ -1,0 +1,239 @@
+diff --git a/Makefile.in b/Makefile.in
+index c3591b6786752..dd39091ca13ea 100644
+--- a/Makefile.in
++++ b/Makefile.in
+@@ -13,6 +13,12 @@ endif
+ 
+ export TOPLEVEL_BUILD := 1
+ 
++ifneq (x86_64, $(TARGET_CPU))
++MY_BITS := 32
++else
++MY_BITS := 64
++endif
++
+ default::
+ 
+ ifndef TEST_MOZBUILD
+@@ -206,6 +212,25 @@ endif
+ package-generated-sources:
+ 	$(call py_action,package_generated_sources,'$(DIST)/$(PKG_PATH)$(GENERATED_SOURCE_FILE_PACKAGE)')
+ 
++# PGO support, but we can't do this test in client.mk
++# No point in clobbering if PGO has been explicitly disabled.
++ifdef NO_PROFILE_GUIDED_OPTIMIZE
++maybe_clobber_profiledbuild: clean
++else
++maybe_clobber_profiledbuild:
++ifneq (,$(findstring clang,$(CC_TYPE)))
++	-rm -rf $(DEPTH)/instrumented
++	-mkdir $(DEPTH)/instrumented
++	$(LLVM_PROFDATA) merge -o $(DEPTH)/instrumented/merged.profdata $(DEPTH)/*.profraw
++ifeq ($(OS_ARCH),WINNT)	
++	$(LLVM_PROFDATA) show --value-cutoff=1024 --all-functions $(DEPTH)/instrumented/merged.profdata --output $(DEPTH)/orderfile.txt
++	$(PYTHON3) $(topsrcdir)/build/order.py $(DEPTH) $(MY_BITS)
++endif # !WINNT
++endif # !clang
++endif # NO_PROFILE_GUIDED_OPTIMIZE
++
++.PHONY: maybe_clobber_profiledbuild
++
+ ifdef JS_STANDALONE
+ # Delegate js-specific rules to js
+ check-%:
+diff --git a/browser/app/profile/firefox.js b/browser/app/profile/firefox.js
+index 84c76fd5eeffb..7c9d8d1b17e42 100644
+--- a/browser/app/profile/firefox.js
++++ b/browser/app/profile/firefox.js
+@@ -66,7 +66,7 @@ pref("extensions.geckoProfiler.acceptedExtensionIds", "geckoprofiler@mozilla.com
+ pref("extensions.webextensions.remote", true);
+ 
+ // Require signed add-ons by default
+-pref("extensions.langpacks.signatures.required", true);
++pref("extensions.langpacks.signatures.required", false);
+ pref("xpinstall.signatures.required", true);
+ pref("xpinstall.signatures.devInfoURL", "https://wiki.mozilla.org/Addons/Extension_Signing");
+ 
+@@ -146,7 +146,7 @@ pref("app.update.notifyDuringDownload", false);
+ // should no longer be used directly. Instead, getAppUpdateAutoEnabled and
+ // getAppUpdateAutoEnabled from UpdateUtils.jsm should be used.
+ #ifndef XP_WIN
+-  pref("app.update.auto", true);
++  pref("app.update.auto", false);
+ #endif
+ 
+ // If set to true, the Update Service will apply updates in the background
+@@ -1339,7 +1339,7 @@ pref("services.sync.prefs.sync.accessibility.browsewithcaret", true);
+ pref("services.sync.prefs.sync.accessibility.typeaheadfind", true);
+ pref("services.sync.prefs.sync.accessibility.typeaheadfind.linksonly", true);
+ pref("services.sync.prefs.sync.addons.ignoreUserEnabledChanges", true);
+-pref("services.sync.prefs.sync.app.shield.optoutstudies.enabled", true);
++pref("services.sync.prefs.sync.app.shield.optoutstudies.enabled", false);
+ // The addons prefs related to repository verification are intentionally
+ // not synced for security reasons. If a system is compromised, a user
+ // could weaken the pref locally, install an add-on from an untrusted
+@@ -1349,7 +1349,7 @@ pref("services.sync.prefs.sync.browser.contentblocking.category", true);
+ pref("services.sync.prefs.sync.browser.contentblocking.features.strict", true);
+ pref("services.sync.prefs.sync.browser.crashReports.unsubmittedCheck.autoSubmit2", true);
+ pref("services.sync.prefs.sync.browser.ctrlTab.sortByRecentlyUsed", true);
+-pref("services.sync.prefs.sync.browser.discovery.enabled", true);
++pref("services.sync.prefs.sync.browser.discovery.enabled", false);
+ pref("services.sync.prefs.sync.browser.download.useDownloadDir", true);
+ pref("services.sync.prefs.sync.browser.formfill.enable", true);
+ pref("services.sync.prefs.sync.browser.link.open_newwindow", true);
+@@ -1357,8 +1357,8 @@ pref("services.sync.prefs.sync.browser.menu.showViewImageInfo", true);
+ pref("services.sync.prefs.sync.browser.newtabpage.activity-stream.asrouter.userprefs.cfr.addons", true);
+ pref("services.sync.prefs.sync.browser.newtabpage.activity-stream.asrouter.userprefs.cfr.features", true);
+ pref("services.sync.prefs.sync.browser.newtabpage.activity-stream.showSearch", true);
+-pref("services.sync.prefs.sync.browser.newtabpage.activity-stream.showSponsored", true);
+-pref("services.sync.prefs.sync.browser.newtabpage.activity-stream.showSponsoredTopSites", true);
++pref("services.sync.prefs.sync.browser.newtabpage.activity-stream.showSponsored", false);
++pref("services.sync.prefs.sync.browser.newtabpage.activity-stream.showSponsoredTopSites", false);
+ pref("services.sync.prefs.sync.browser.newtabpage.activity-stream.feeds.topsites", true);
+ pref("services.sync.prefs.sync.browser.newtabpage.activity-stream.topSitesRows", true);
+ pref("services.sync.prefs.sync.browser.newtabpage.activity-stream.feeds.snippets", true);
+@@ -1474,7 +1474,7 @@ pref("prompts.defaultModalType", 3);
+ 
+ pref("browser.topsites.useRemoteSetting", true);
+ // Fetch sponsored Top Sites from Mozilla Tiles Service (Contile)
+-pref("browser.topsites.contile.enabled", true);
++pref("browser.topsites.contile.enabled", false);
+ pref("browser.topsites.contile.endpoint", "https://contile.services.mozilla.com/v1/tiles");
+ 
+ // The base URL for the Quick Suggest anonymizing proxy. To make a request to
+@@ -1584,7 +1584,7 @@ pref("browser.newtabpage.activity-stream.discoverystream.personalization.modelKe
+ // System pref to allow Pocket stories personalization to be turned on/off.
+ pref("browser.newtabpage.activity-stream.discoverystream.recs.personalized", false);
+ // System pref to allow Pocket sponsored content personalization to be turned on/off.
+-pref("browser.newtabpage.activity-stream.discoverystream.spocs.personalized", true);
++pref("browser.newtabpage.activity-stream.discoverystream.spocs.personalized", false);
+ 
+ // User pref to show stories on newtab (feeds.system.topstories has to be set to true as well)
+ pref("browser.newtabpage.activity-stream.feeds.section.topstories", true);
+@@ -2079,7 +2079,7 @@ pref("browser.migrate.chrome.history.maxAgeInDays", 180);
+ pref("browser.migrate.showBookmarksToolbarAfterMigration", true);
+ 
+ pref("extensions.pocket.api", "api.getpocket.com");
+-pref("extensions.pocket.enabled", true);
++pref("extensions.pocket.enabled", false);
+ pref("extensions.pocket.oAuthConsumerKey", "40249-e88c401e1b1f2242d9e441c4");
+ pref("extensions.pocket.site", "getpocket.com");
+ pref("extensions.pocket.onSaveRecs", true);
+@@ -2180,7 +2180,7 @@ pref("app.normandy.shieldLearnMoreUrl", "https://support.mozilla.org/1/firefox/%
+ pref("app.normandy.last_seen_buildid", "");
+ pref("app.normandy.onsync_skew_sec", 600);
+ #ifdef MOZ_DATA_REPORTING
+-  pref("app.shield.optoutstudies.enabled", true);
++  pref("app.shield.optoutstudies.enabled", false);
+ #else
+   pref("app.shield.optoutstudies.enabled", false);
+ #endif
+@@ -2226,8 +2226,8 @@ pref("toolkit.coverage.enabled", false);
+ pref("toolkit.coverage.endpoint.base", "https://coverage.mozilla.org");
+ 
+ // Discovery prefs
+-pref("browser.discovery.enabled", true);
+-pref("browser.discovery.containers.enabled", true);
++pref("browser.discovery.enabled", false);
++pref("browser.discovery.containers.enabled", false);
+ pref("browser.discovery.sites", "addons.mozilla.org");
+ 
+ pref("browser.engagement.recent_visited_origins.expiry", 86400); // 24 * 60 * 60 (24 hours in seconds)
+@@ -2699,3 +2699,19 @@ pref("browser.snapshots.relevancy.timeOfDayIntervalSeconds", 3600);
+ pref("browser.places.snapshots.expiration.days", 210);
+ // For user managed snapshots we use more than a year, to support yearly tasks.
+ pref("browser.places.snapshots.expiration.userManaged.days", 420);
++
++// no sponsored
++pref("browser.newtabpage.activity-stream.showSponsoredTopSites", false);
++
++// scrolling
++pref("mousewheel.withnokey.sysnumlines",false);
++pref("mousewheel.withnokey.numlines", 7);
++pref("mousewheel.min_line_scroll_amount", 50);
++pref("general.smoothScroll.durationToIntervalRatio", 670);
++pref("general.smoothScroll.mouseWheel.durationMaxMS", 420);
++pref("mousewheel.acceleration.factor", 10);
++pref("mousewheel.acceleration.start", 3);
++pref("mousewheel.default.delta_multiplier_y", 180);
++
++// no datareporting
++pref("datareporting.healthreport.uploadEnabled", false);
+\ No newline at end of file
+diff --git a/browser/installer/package-manifest.in b/browser/installer/package-manifest.in
+index 73a41dc25b9ad..b998bbb602f7e 100644
+--- a/browser/installer/package-manifest.in
++++ b/browser/installer/package-manifest.in
+@@ -97,6 +97,8 @@
+ #if MOZ_PACKAGE_MSVC_DLLS
+ @BINPATH@/@MSVC_C_RUNTIME_DLL@
+ @BINPATH@/@MSVC_CXX_RUNTIME_DLL@
++@BINPATH@/portable*.dll
++@BINPATH@/portable*.ini
+ #endif
+ #if MOZ_PACKAGE_WIN_UCRT_DLLS
+ @BINPATH@/api-ms-win-*.dll
+diff --git a/build/order.py b/build/order.py
+new file mode 100644
+index 0000000000000..08a959dc97ed7
+--- /dev/null
++++ b/build/order.py
+@@ -0,0 +1,36 @@
++#!/usr/bin/env python3
++
++#- * - coding : utf - 8 - * -
++import sys
++import os 
++import re
++
++def write_order(obj_dir, bits) : 
++    file_path2 = obj_dir + '/' + 'orderfile' + bits + '.txt'
++    if os.path.exists(file_path2):
++        os.remove(file_path2)
++    file_path1 = obj_dir + '/' + 'orderfile.txt'
++    if os.path.exists(file_path1):
++        with open(file_path1,'r') as f1:
++            data = f1.read() 
++        with open(file_path2,'w') as f2:
++            data_new = re.sub(r'^.*Counters:.*$', '', data, flags = re.M) 
++            data_new = re.sub(r'^.*Hash:.*$', '', data_new, flags = re.M)
++            data_new = re.sub(r':$', '', data_new, flags = re.M) 
++            data_new = re.sub(r'^\s+', '', data_new, flags = re.M)
++            data_new = re.sub(r'^.*\.cpp:', '', data_new, flags = re.M)
++            data_new = re.sub(r'^.*\.c:', '', data_new, flags = re.M)
++            data_new = re.sub(r'^.*\.0:', '', data_new, flags = re.M)
++            data_new = re.sub(r'^Instrumentation.*$', '', data_new, flags = re.M)
++            data_new = re.sub(r'^Functions.*$', '', data_new, flags = re.M)
++            data_new = re.sub(r'^Total.*$', '', data_new, flags = re.M)
++            data_new = re.sub(r'^Number.*$', '', data_new, flags = re.M)
++            data_new = re.sub(r'^Maximum.*$', '', data_new, flags = re.M)
++            data_new = re.sub(r'^[ \t]*\n', '', data_new, flags = re.M) 
++            f2.write(data_new) 
++
++if __name__ == '__main__':
++    if len(sys.argv) != 3:
++        print("Usage:", file=sys.stderr)
++        sys.exit(1)
++    write_order(sys.argv[1], sys.argv[2])
+\ No newline at end of file
+diff --git a/toolkit/library/nsDllMain.cpp b/toolkit/library/nsDllMain.cpp
+index 396005b18451f..6c1d05d309f48 100644
+--- a/toolkit/library/nsDllMain.cpp
++++ b/toolkit/library/nsDllMain.cpp
+@@ -8,6 +8,16 @@
+ #include "mozilla/Assertions.h"
+ #include "mozilla/WindowsVersion.h"
+ 
++#if defined(_MSC_VER) && defined(TT_MEMUTIL)
++#if defined(_M_IX86)
++#pragma comment(lib,"portable32.lib")
++#pragma comment(linker, "/include:_GetCpuFeature_tt")
++#elif defined(_M_AMD64) || defined(_M_X64)
++#pragma comment(lib,"portable64.lib")
++#pragma comment(linker, "/include:GetCpuFeature_tt")
++#endif
++#endif /* _MSC_VER && TT_MEMUTIL */
++
+ #if defined(__GNUC__)
+ // If DllMain gets name mangled, it won't be seen.
+ extern "C" {
