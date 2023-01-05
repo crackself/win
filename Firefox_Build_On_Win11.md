@@ -32,9 +32,8 @@ SET WIN_UCRT_REDIST_DIR=%UCRT_REDISTDIR%\Redist\ucrt\DLLs\x64
 
 SET WINDOWSSDKDIR=C:\Program Files (x86)\Windows Kits\10
 ```
-#### 安装 `Build Tools for Visual Studio 2022`
-#### 安装绿色版版`git`到`D:\work\PortableGit64`
-#### 安装`Cygwin`到`D:\work\cygwin64`（`Cygwin`非必须）
+#### 安装[绿色版版`git`](https://github.com/git-for-windows/git/releases/download/v2.39.0.windows.2/PortableGit-2.39.0.2-64-bit.7z.exe)到`D:\work\PortableGit64`
+#### 安装[`Cygwin`](https://www.cygwin.com/setup-x86_64.exe)到`D:\work\cygwin64`（`Cygwin`非必须）
 
 #### 启动`start-shell.bat`通过`git`拉取源码（目录为 `D:\work\mozilla-unified`）
 ```
@@ -116,7 +115,7 @@ ifdef JS_STANDALONE
 ...
 ```
 
-#### 修改mozilla-unified\browser\app\profile\firefox.js
+#### 修改`mozilla-unified\browser\app\profile\firefox.js`
 ```
 不显示赞助商项目
     pref("browser.topsites.contile.enabled", false);        about:newtab
@@ -131,18 +130,17 @@ ifdef JS_STANDALONE
 标签栏不显示tabmanager
     pref("browser.tabs.tabmanager.enabled", false);
 
-// smoothScroll scrolling.
-// scrolling
-pref("mousewheel.withnokey.sysnumlines",false);
-pref("mousewheel.withnokey.numlines", 7);
-pref("mousewheel.min_line_scroll_amount", 50);
-pref("general.smoothScroll.durationToIntervalRatio", 670);
-pref("general.smoothScroll.mouseWheel.durationMaxMS", 420);
-pref("mousewheel.acceleration.factor", 10);
-pref("mousewheel.acceleration.start", 3);
-pref("mousewheel.default.delta_multiplier_y", 180);
+    // smoothScroll scrolling 滚动参数
+    pref("mousewheel.withnokey.sysnumlines",false);
+    pref("mousewheel.withnokey.numlines", 7);
+    pref("mousewheel.min_line_scroll_amount", 50);
+    pref("general.smoothScroll.durationToIntervalRatio", 670);
+    pref("general.smoothScroll.mouseWheel.durationMaxMS", 420);
+    pref("mousewheel.acceleration.factor", 10);
+    pref("mousewheel.acceleration.start", 3);
+    pref("mousewheel.default.delta_multiplier_y", 180);
 
-// 非签名语言包
+允许非签名语言包
     pref("extensions.langpacks.signatures.required", false);
 
 禁用pocket
@@ -156,7 +154,7 @@ pref("mousewheel.default.delta_multiplier_y", 180);
     pref("browser.discovery.enabled", false);
     pref("browser.discovery.containers.enabled", false);
 
-不显示Firefox-view
+标题栏不显示Firefox-view
     pref("browser.tabs.firefox-view", false);
 
 禁用自动升级
@@ -238,7 +236,8 @@ browser.startup.homepage = about:newtab	  # 设置Firefox启动主页为新标�
 ac_add_options --with-app-name=Firefox
 
 mk_add_options MOZ_OBJDIR=../obju64-release
-mk_add_options MOZ_MAKE_FLAGS=-j5
+# 多线程编译
+mk_add_options MOZ_PARALLEL_BUILD=5
 
 # for 64-bit build
 ac_add_options --host=x86_64-pc-mingw32
@@ -266,7 +265,7 @@ export RUSTC_OPT_LEVEL=2
 #export ENABLE_CLANG_PLUGIN=1
 #export MOZ_LTO=cross
 
-ac_add_options --enable-optimize="-O2 -DTT_MEMUTIL -clang:-ftree-vectorize -clang:-march=skylake -clang:-mtune=skylake"
+ac_add_options --enable-optimize="-O2 -DTT_MEMUTIL -clang:-ftree-vectorize -clang:-march=skylake -clang:-mtune=skylake" # 对skylake平台CPU优化
 export RUSTFLAGS="$RUSTFLAGS -Ctarget-cpu=skylake"
 #ac_add_options --enable-optimize="-O2 -DTT_MEMUTIL"
 ac_add_options --enable-rust-simd
@@ -305,6 +304,7 @@ ac_add_options --disable-system-policies
 ac_add_options --disable-geckodriver
 ac_add_options --disable-dmd
 ac_add_options --disable-profiling
+# 禁用遥测
 MOZ_TELEMETRY_REPORTING=
 
 # Enable
