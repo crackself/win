@@ -17,7 +17,7 @@ C++ ATL for v143 build tools (x86 and x64)
 ```
 REM Reset some env vars.
 SET MOZBUILD_STATE_PATH=/d/work/.mozbuild
-SET PATH=D:\work\.mozbuild\cbindgen;D:\work\.mozbuild\dump_syms;D:\work\.mozbuild\fix-stacks;D:\work\.mozbuild\git-cinnabar;D:\work\.mozbuild\minidump-stackwalk;D:\work\.mozbuild\mozmake;D:\work\.mozbuild\nasm;D:\work\.mozbuild\node;D:\work\.mozbuild\nsis;D:\work\.mozbuild\sccache;D:\work\.mozbuild\winchecksec;D:\work\PortableGit64;D:\work\PortableGit64\bin;C:\Users\Administrator\.mozbuild\git-cinnabar;%PATH%
+SET PATH=D:\work\.mozbuild\cbindgen;D:\work\.mozbuild\dump_syms;D:\work\.mozbuild\fix-stacks;D:\work\.mozbuild\git-cinnabar;D:\work\.mozbuild\minidump-stackwalk;D:\work\.mozbuild\mozmake;D:\work\.mozbuild\nasm;D:\work\.mozbuild\node;D:\work\.mozbuild\nsis;D:\work\.mozbuild\sccache;D:\work\.mozbuild\winchecksec;D:\work\PortableGit64;D:\work\PortableGit64\bin;C:\Users\Administrator\.mozbuild\git-cinnabar;D:\work\.mozbuild\clang\bin;D:\work\.mozbuild\clang-tools\clang-tidy\bin;D:\work\.mozbuild\rust\bin;%PATH%
 SET CYGWIN=D:\work\cygwin64\bin
 SET INCLUDE=D:\work\.mozbuild\clang\include;%INCLUDE%
 SET LIB=D:\work\.mozbuild\clang\lib;D:\work\.mozbuild\clang\lib\clang\15.0.5\lib\windows;%LIB%
@@ -258,16 +258,16 @@ ac_add_options --target=x86_64-pc-mingw32
 
 # optimize
 ac_add_options MOZ_PGO=1
-export CC=clang-cl
-export CXX=clang-cl
-export LINKER=lld-link
-export RUSTC_OPT_LEVEL=2
+#export CC=clang-cl
+#export CXX=clang-cl
+#export LINKER=lld-link
+export RUSTC_OPT_LEVEL=3
 #export ENABLE_CLANG_PLUGIN=1
 #export MOZ_LTO=cross
 
-ac_add_options --enable-optimize="-O2 -DTT_MEMUTIL -clang:-ftree-vectorize -clang:-march=skylake -clang:-mtune=skylake" # 对skylake平台CPU优化
+ac_add_options --enable-optimize="-O3 -DTT_MEMUTIL -clang:-ftree-vectorize -clang:-march=skylake -clang:-mtune=skylake" # 对skylake平台CPU优化
 export RUSTFLAGS="$RUSTFLAGS -Ctarget-cpu=skylake"
-#ac_add_options --enable-optimize="-O2 -DTT_MEMUTIL"
+#ac_add_options --enable-optimize="-O3 -DTT_MEMUTIL"
 ac_add_options --enable-rust-simd
 ac_add_options --enable-jemalloc
 ac_add_options --enable-install-strip
