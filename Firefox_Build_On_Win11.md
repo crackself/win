@@ -105,6 +105,14 @@ mozilla-release: 正式版分支
 ```
 cd /d/work/mozilla-unified
 ./mach bootstap
+
+Please choose the version of Firefox you want to build (see note above):
+  1. Firefox for Desktop Artifact Mode [default]
+  2. Firefox for Desktop
+  3. GeckoView/Firefox for Android Artifact Mode
+  4. GeckoView/Firefox for Android
+  5. SpiderMonkey JavaScript engine
+Your choice: 2
 ```
 #### 配置`.mozconfig`配置文件后开始编译（如设置编译目录为`D:\work\obju64-release`）
 ### PGO优化：
