@@ -4,6 +4,56 @@ Memory: 4GB RAM minimum, 8GB+ recommended.
 Disk Space: At least 40GB of free disk space.
 Win11 or Win10 with lastest update
 ```
+#### 安装[rust](https://static.rust-lang.org/rustup/dist/x86_64-pc-windows-msvc/rustup-init.exe)
+```
+This path will then be added to your PATH environment variable by
+modifying the HKEY_CURRENT_USER/Environment/PATH registry key.
+
+You can uninstall at any time with rustup self uninstall and
+these changes will be reverted.
+
+Current installation options:
+
+
+   default host triple: x86_64-pc-windows-msvc
+     default toolchain: stable (default)
+               profile: default
+  modify PATH variable: yes
+
+1) Proceed with installation (default)
+2) Customize installation
+3) Cancel installation
+>2
+
+I'm going to ask you the value of each of these installation options.
+You may simply press the Enter key to leave unchanged.
+
+Default host triple? [x86_64-pc-windows-msvc]
+
+
+Default toolchain? (stable/beta/nightly/none) [stable]
+beta
+
+Profile (which tools and data to install)? (minimal/default/complete) [default]
+
+
+Modify PATH variable? (Y/n)
+
+
+
+Current installation options:
+
+
+   default host triple: x86_64-pc-windows-msvc
+     default toolchain: beta
+               profile: default
+  modify PATH variable: yes
+
+1) Proceed with installation (default)
+2) Customize installation
+3) Cancel installation
+>1
+```
 #### 安装Visual [Studio Build Tools](https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022)组件
 ```
 Desktop development with C++
@@ -51,7 +101,11 @@ mozilla-central: 最新的开发版(默认分支)
 mozilla-beta: 测试版分支
 mozilla-release: 正式版分支
 ```
-
+#### 配置工具链（centrel分支）
+```
+cd /d/work/mozilla-unified
+./mach bootstap
+```
 #### 配置`.mozconfig`配置文件后开始编译（如设置编译目录为`D:\work\obju64-release`）
 ### PGO优化：
 #### 生成首次编译配置
