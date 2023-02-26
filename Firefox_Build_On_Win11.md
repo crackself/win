@@ -54,13 +54,39 @@ Current installation options:
 3) Cancel installation
 >1
 ```
-#### 安装Visual [Studio Build Tools](https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022)组件
+#### 安装[Visual Studio Build Tools](https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022)组件
 ```
 Desktop development with C++
 
 MSVC v143 - VS 2022 C++ x64/x86 build tools
 Windows 10 SDK (at least 10.0.19041.0)		# 对应操作系统的最新SDK
 C++ ATL for v143 build tools (x86 and x64)
+```
+#### Visual Studio Build Tools 组件配置
+- Visual Studio Build Tools.vsconfig
+```
+{
+  "version": "1.0",
+  "components": [
+    "Microsoft.VisualStudio.Component.Roslyn.Compiler",
+    "Microsoft.Component.MSBuild",
+    "Microsoft.VisualStudio.Component.CoreBuildTools",
+    "Microsoft.VisualStudio.Workload.MSBuildTools",
+    "Microsoft.VisualStudio.Component.Windows10SDK",
+    "Microsoft.VisualStudio.Component.VC.CoreBuildTools",
+    "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
+    "Microsoft.VisualStudio.Component.VC.Redist.14.Latest",
+    "Microsoft.VisualStudio.Component.VC.CMake.Project",
+    "Microsoft.VisualStudio.Component.VC.ATL",
+    "Microsoft.VisualStudio.Component.TextTemplating",
+    "Microsoft.VisualStudio.Component.VC.CoreIde",
+    "Microsoft.VisualStudio.ComponentGroup.NativeDesktop.Core",
+    "Microsoft.VisualStudio.Component.Windows10SDK.19041",
+    "Microsoft.VisualStudio.Workload.VCTools",
+    "Microsoft.VisualStudio.Component.VC.14.35.17.5.ATL.Spectre",
+    "Microsoft.VisualStudio.Component.VC.14.35.17.5.MFC.Spectre"
+  ]
+}
 ```
 #### 安装[MozillaBuild](https://ftp.mozilla.org/pub/mozilla/libraries/win32/MozillaBuildSetup-Latest.exe)到D:\work
 修改`start-shell.bat`，添加环境变量`PATH LIB INCLUDE`
