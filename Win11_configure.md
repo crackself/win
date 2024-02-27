@@ -23,3 +23,13 @@ reg unload HKLM\WimRegistry
 ```
 dism /unmount-wim /mountdir:C:\AIKMount /commit
 ```
+### Some settings are hidden or managed by your organization
+```
+https://answers.microsoft.com/zh-hans/windows/forum/all/%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88/590b90dd-b083-4c42-af93-b2adbe6c3c11
+https://superuser.com/questions/1376568/windows-10-your-phone-add-a-phone-disabled
+```
+##### modify regedit
+change to 0
+```
+\HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CloudContent\DisableWindowsConsumerFeatures
+```
